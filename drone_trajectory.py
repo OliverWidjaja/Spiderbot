@@ -5,8 +5,8 @@ import time
 UDP_IP = "127.0.0.1"
 UDP_PORT = 5059
 
-position = [0, 0, 0]  # This will hold pos_x, pos_y, pos_z
-orientation = [0, 0, 0]  # This will hold yaw, pitch, roll
+position = [0, 0, 0]  # pos_x, pos_y, pos_z
+orientation = [0, 0, 0]  # yaw, pitch, roll
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((UDP_IP, UDP_PORT))
@@ -17,8 +17,8 @@ def update_drone_pose():
     try:
         data, _ = sock.recvfrom(1024)
         msg = json.loads(data.decode())
-        position = msg["pos"]  # Get the position array
-        orientation = msg["orientation"]  # Get the orientation array
+        position = msg["pos"]
+        orientation = msg["orientation"]
     except BlockingIOError:
         pass  # No new data 
 

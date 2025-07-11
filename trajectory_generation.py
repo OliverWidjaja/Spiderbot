@@ -1,13 +1,16 @@
+from pyvesc.VESC.VESC import VESC
 import numpy as np
 import math, time
-import with_motor_commands
 
 # This sequence will run after the drone has flown and landed on the nest with cable attached.
 # Actual cable unspooling mechanism of the drone flying mechanism has yet to be completed.
 
+motor = VESC(serial_port='COM3')
+
 # Taut Initial Zero Position
-with_motor_commands.zero_pos()
-time.sleep(2)
+motor.set_pos(0)
+motor.set_pos(0, can_id=119)
+time.sleep(1)
 
 # VESC Cable Drum spec
 vesc_cable_drum = 33.25 # (mm)
@@ -17,13 +20,11 @@ vesc_cable_drum_1deg = (np.pi * 33.25) / 360
 # Angles Initialization
 curr_angle_1 = 0 
 curr_angle_2 = 0
-motor_1_done = False
-motor_2_done = False
 counter_1 = 0
 counter_2 = 0
 
 # Timestep (s)
-dt = 0.01 
+dt = 0.25
 
 #  Coordinate Values (x,y in mm)
 nest_cable1 = np.array([1000, 4000]) 
@@ -52,13 +53,18 @@ for i in range(max(total_angle_change_1, total_angle_change_2) // 10):
         counter_1 += 10
         if curr_angle_1 > 360:
             curr_angle_1 -= 360
-        with_motor_commands.set_pos_1(curr_angle_1)
+        motor.set_pos(curr_angle_1)
 
     if counter_2 < total_angle_change_2:
         curr_angle_2 += 10
         counter_2 += 10
         if curr_angle_2 > 360:
             curr_angle_2 -= 360
-        with_motor_commands.set_pos_2(curr_angle_2)
+        motor.set_pos(curr_angle_2, can_id=119)
 
     time.sleep(dt)
+
+# Exit
+motor.stop_heartbeat()
+motor.serial_port.flush()
+motor.serial_port.close()
