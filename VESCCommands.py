@@ -1,7 +1,7 @@
-
 from pyvesc.VESC.VESC import VESC
 import time
 import numpy as np
+
 
 def zero_pos(serial_port='COM3', can_id_2=119, cleanup_serial=True):
     motor = VESC(serial_port=serial_port)
@@ -24,7 +24,7 @@ def zero_pos(serial_port='COM3', can_id_2=119, cleanup_serial=True):
             except Exception:
                 pass
 
-def move_motors(length_1_mm, length_2_mm, dt, serial_port='COM3', step_size=10, can_id_2=119, cleanup_serial=True):
+def move_motors(length_1_mm, length_2_mm, dt=0.1, serial_port='COM3', step_size=10, can_id_2=119, cleanup_serial=True):
     """
     Move two motors by specifying cable length to wind/unwind (in mm) for each motor.
     Args:
@@ -36,14 +36,14 @@ def move_motors(length_1_mm, length_2_mm, dt, serial_port='COM3', step_size=10, 
         can_id_2 (int): CAN ID for motor 2
         cleanup_serial (bool): Whether to flush/close serial port after
     """
-    # VESC Cable Drum spec
-    vesc_cable_drum = 33.25 # (mm)
+    # VESC Cable Drum spec (mm)
+    vesc_cable_drum = 33.25
     vesc_cable_drum_circum = np.pi * vesc_cable_drum
-    vesc_cable_drum_1deg = vesc_cable_drum_circum / 360
+    deg_per_mm = vesc_cable_drum_circum / 360
 
-    # Convert length to angle (deg*10)
-    angle_1 = (length_1_mm / vesc_cable_drum_1deg) * 10
-    angle_2 = (length_2_mm / vesc_cable_drum_1deg) * 10
+    # Convert length to angle (deg)
+    angle_1 = (length_1_mm / deg_per_mm)
+    angle_2 = (length_2_mm / deg_per_mm)
     total_angle_change_1 = int(round(angle_1))
     total_angle_change_2 = int(round(angle_2))
 
@@ -95,7 +95,7 @@ def move_motors(length_1_mm, length_2_mm, dt, serial_port='COM3', step_size=10, 
 # Example usage:
 if __name__ == "__main__":
     # Zero position command
-    zero_pos(serial_port='COM3', can_id_2=119)
+    zero_pos()
 
     # Test move commands
     move_motors(5, 0, 0.2)
