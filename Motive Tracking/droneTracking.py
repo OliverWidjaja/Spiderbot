@@ -25,3 +25,4 @@ while True:
     update_drone_pose()
     print(f"Position: {position}, Orientation: {orientation}")
     time.sleep(0.1)
+    

@@ -4,6 +4,7 @@ import json
 import time
 import math
 
+
 UDP_IP = "127.0.0.1"
 UDP_PORT = 5059
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -53,3 +54,4 @@ if __name__ == "__main__":
             time.sleep(0.1)
             streaming_client.update_sync()
             print(f"Received {num_frames} frames.")
+            
