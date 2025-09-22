@@ -10,7 +10,7 @@ a1, a2 = np.array([80, 440]), np.array([1120, 440])  # Anchor positions (global)
 b1, b2 = np.array([-117.5, 35]), np.array([117.5, 35])  # Cable extrusion points (local)
 
 # Trajectory parameters
-endp = np.array([600, 500, 0])  # x, y, phi (global)
+endp = np.array([600, 350, 0])  # x, y, phi (global)
 startp = np.array([600, 35, 0])
 t_total = 5  # Total trajectory duration (s)
 dt = 1  # ~Arbitrary checkpoints for trajectory

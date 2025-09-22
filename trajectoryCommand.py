@@ -29,8 +29,8 @@ def cable_lengths(x, y, phi):
     c2 = a2 - (rot_mat @ b2 + [x, y])
     return np.linalg.norm(c1), np.linalg.norm(c2)
 
-def force_torque_eq(vars, x, y, phi):
-    tens1, tens2 = vars
+def force_torque_eq(vars, x, y):
+    tens1, tens2, phi = vars[0], vars[1], vars[2]
     rot_mat = np.array([[np.cos(phi), -np.sin(phi)], [np.sin(phi), np.cos(phi)]])
     
     # Cable vectors and norms
@@ -50,19 +50,19 @@ def force_torque_eq(vars, x, y, phi):
     f2 = np.append(c2_norm * tens2, 0)
     torque = np.cross(b1_rot, f1)[2] + np.cross(b2_rot, f2)[2]
     
-    return [fx, fy, torque]
+    return np.array([fx, fy, torque])
 
-def solve_ik(x, y, phi, guess=[1000, 1000]):
-    result = least_squares(lambda vars: force_torque_eq(vars, x, y, phi), guess)
-    tens1, tens2 = result.x
+def solve_ik(x, y, guess=np.array([10, 10, 1e-3])):
+    result = least_squares(lambda vars: force_torque_eq(vars, x, y), guess)
+    tens1, tens2, phi = result.x
     cable1, cable2 = cable_lengths(x, y, phi)
-    residuals = force_torque_eq([tens1, tens2], x, y, phi)
-    
+    residuals = force_torque_eq([tens1, tens2, phi], x, y)
+
     return {
-        'tensions': (tens1, tens2),
-        'cable_lengths': (cable1, cable2),
+        'tensions': np.array([tens1, tens2]),
+        'cable_lengths': np.array([cable1, cable2]),
         'residuals': residuals,
-        'feasible': tens1 > 0 and tens2 > 0
+        'feasible': tens1 > 0 and tens2 > 0 and np.linalg.norm(residuals) < 1e-2
     }
 
 def execute_trajectory(motor: VESC):
@@ -133,8 +133,27 @@ def hold_motor(motor: VESC, duration=10):
 
     print("Hold complete.")
 
+def test_solve_ik():
+    test_points = [
+        (600, 35),
+        (800, 100),
+        (1000, 200),
+        (1200, 300),
+        (1400, 400)
+    ]
+    
+    for x, y in test_points:
+        sol = solve_ik(x, y)
+        print(f"Point ({x}, {y}):")
+        print(f"  Cable Lengths: {sol['cable_lengths']}")
+        print(f"  Tensions: {sol['tensions']}")
+        print(f"  Residuals: {sol['residuals']}")
+        print(f"  Feasible: {sol['feasible']}\n")
+    exit(0)
+
 if __name__ == "__main__":
     # motor = VESC(serial_port='COM3')
+    test_solve_ik()
 
     animation, fig, ax = create_trajectory_animation(p, time_steps, a1, a2, b1, b2)
     plt.show()
