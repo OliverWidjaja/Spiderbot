@@ -3,7 +3,7 @@ import matplotlib.animation as animation
 import numpy as np
 from trajectoryCommand import solve_ik, startp, endp, t_total, dt, a1, a2, b1, b2
 
-def animate_trajectory(start_pos=None, end_pos=None, t_total=5, dt=0.1):
+def animate_trajectory(start_pos=startp, end_pos=endp, t_total=t_total, dt=dt):
     if start_pos is None:
         start_pos = startp
     if end_pos is None:
@@ -128,7 +128,7 @@ def animate_trajectory(start_pos=None, end_pos=None, t_total=5, dt=0.1):
         # Update time text and title
         current_time = frame * dt
         feasibility = "Feasible" if feasible_points[frame] else "Infeasible"
-        status_text.set_text(f'Status: {feasibility}\nTime: {current_time:.1f}/{t_total} s')
+        status_text.set_text(f'Status: {feasibility}\nTime: {current_time:.2f}/{t_total} s')
 
         if feasibility == "Infeasible":
             robot_outline.set_color('brown')
@@ -151,7 +151,7 @@ def animate_trajectory(start_pos=None, end_pos=None, t_total=5, dt=0.1):
     return anim
 
 if __name__ == "__main__":
-    startp = np.array([0.6, 0.035])
-    endp = np.array([0.5, 0.4])
+    # startp = np.array([0.6, 0.035])
+    # endp = np.array([0.5, 0.4])
 
-    animate_trajectory(start_pos=startp, end_pos=endp, t_total=t_total, dt=0.01)
+    animate_trajectory(start_pos=startp, end_pos=endp, t_total=t_total, dt=dt)

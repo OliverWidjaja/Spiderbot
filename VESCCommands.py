@@ -1,7 +1,6 @@
 from pyvesc import VESC
 from pyvesc.VESC.messages import SetRPM, SetCurrent, GetValues
 import time
-import numpy as np
 
 
 # TO DO: Hard-code maximum cable length spooled (~1600mm)
