@@ -1,7 +1,5 @@
 from pyvesc import VESC
-from pyvesc.VESC.messages import SetRPM, SetCurrent, GetValues
 import time
-import numpy as np
 
 
 # TO DO: Hard-code maximum cable length spooled (~1600mm)
@@ -21,11 +19,10 @@ def move_motors(motor: VESC, length_1_mm, length_2_mm, T, dt=0.01, can_id_2=119)
         except Exception as e:
             print(f"Error getting initial motor positions: {e}")
             print("Retrying ...")
-            time.sleep(0.1)
+            time.sleep(0.01)
 
     curr_angle_1 = angle_1_offset
     curr_angle_2 = angle_2_offset
-
 
     num_of_steps = int(T/dt)
     step_size_1 = angle_1/num_of_steps
@@ -43,7 +40,7 @@ def move_motors(motor: VESC, length_1_mm, length_2_mm, T, dt=0.01, can_id_2=119)
         time.sleep(dt)
 
 if __name__ == "__main__":
-    motor = VESC(serial_port='COM3')
+    motor = VESC(serial_port='COM5')
 
     move_motors(motor, -100, -100, 5)
     move_motors(motor, 100, 100, 5)

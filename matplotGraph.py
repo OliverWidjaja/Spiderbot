@@ -151,7 +151,7 @@ def animate_trajectory(start_pos=None, end_pos=None, t_total=5, dt=0.1):
     return anim
 
 if __name__ == "__main__":
-    startp = np.array([0.6, 0.035])
-    endp = np.array([0.5, 0.4])
+    # startp = np.array([0.6, 0.035])
+    # endp = np.array([0.5, 0.4])
 
-    animate_trajectory(start_pos=startp, end_pos=endp, t_total=t_total, dt=0.01)
+    animate_trajectory(start_pos=startp, end_pos=endp, t_total=t_total, dt=dt)
