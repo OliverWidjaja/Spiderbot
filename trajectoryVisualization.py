@@ -9,7 +9,6 @@ def animate_trajectory(start_pos=startp, end_pos=endp, t_total=t_total, dt=dt):
     if end_pos is None:
         end_pos = endp
     
-    
     # Calculate trajectory points
     num_of_steps = int(t_total / dt) + 1
     time_steps = np.arange(0, num_of_steps) * dt
@@ -68,10 +67,13 @@ def animate_trajectory(start_pos=startp, end_pos=endp, t_total=t_total, dt=dt):
     
     # Set up the plot limits with some margin
     margin = 0.1
-    x_min = min(positions[:,0].min(), a1[0], a2[0]) - margin
-    x_max = max(positions[:,0].max(), a1[0], a2[0]) + margin
-    y_min = min(positions[:,1].min(), a1[1], a2[1]) - margin
-    y_max = max(positions[:,1].max(), a1[1], a2[1]) + margin
+    # x_min = min(positions[:,0].min(), a1[0], a2[0]) - margin
+    # x_max = max(positions[:,0].max(), a1[0], a2[0]) + margin
+    # y_min = min(positions[:,1].min(), a1[1], a2[1]) - margin
+    # y_max = max(positions[:,1].max(), a1[1], a2[1]) + margin
+
+    x_min, x_max = 0, 1.2
+    y_min, y_max = 0, 0.6
     
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_min, y_max)
