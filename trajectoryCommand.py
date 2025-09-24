@@ -3,18 +3,16 @@ from scipy.optimize import least_squares
 import numpy as np
 import time
 
-
+# Parameters
 m, g = 2, 9.81  # Mass (kg), Gravity (m/s^2)
 a1, a2 = np.array([80/1000, 440/1000]), np.array([1120/1000, 440/1000])  # Anchor positions in global frame (m)
 b1, b2 = np.array([-117.5/1000, 35/1000]), np.array([117.5/1000, 35/1000])  # Cable extrusion points in local frame (m)
 
+# Variables
 endp = np.array([600/1000, 200/1000])  # x, y (m, m)
 startp = np.array([600/1000, 35/1000])  # x, y (m, m)
-
 t_total = 5
 dt = 0.5
-num_of_steps = int(t_total / dt) + 1
-time_steps = np.arange(0, num_of_steps) * dt
 
 def solve_length(x, y, phi):
     rot_mat = np.array([[np.cos(phi), -np.sin(phi)], [np.sin(phi), np.cos(phi)]])
@@ -59,20 +57,9 @@ def solve_ik(x, y, guess=np.array([10, 10, 1e-3])):
         'feasible': tens1 > 0 and tens2 > 0 and np.linalg.norm(residuals) < 1e-2
     }
 
-def evaluate_ik(x, y, print_details=True):
-    sol = solve_ik(x, y)
-
-    if (print_details == True):
-        print(f"Point ({x:.2f}, {y:.2f}):")
-        print(f"  Cable Lengths: {sol['found_lengths']} m")
-        print(f"  Tensions: {sol['tensions']} N")
-        print(f"  φ: {sol['phi']} rad ({np.degrees(sol['phi'])}°)")
-        print(f"  Residuals: {sol['residuals']} (N, N, Nm)")
-        print(f"  Feasible: {sol['feasible']}\n")
-
-    return sol
-
-def evaluate_traj(print_details=True):
+def solve_traj(startp=startp, endp=endp, t_total=t_total, dt=dt, print_details=True):
+    num_of_steps = int(t_total / dt) + 1
+    time_steps = np.arange(0, num_of_steps) * dt
     p = startp + (endp - startp) * (time_steps / t_total).reshape(-1, 1)
     cable_lengths = np.zeros((num_of_steps, 2))
 
@@ -92,7 +79,7 @@ def evaluate_traj(print_details=True):
 
     return cable_lengths # in meters
 
-def execute_trajectory(motor: VESC, lengths):
+def run_traj(motor: VESC, lengths):
     displaced_length = np.zeros_like(lengths) # mm array
 
     for i in range(1, len(lengths)):
@@ -145,12 +132,10 @@ def hold_motor(motor: VESC, duration=10):
     print("Hold complete.")
 
 if __name__ == "__main__":
-    # motor = VESC(serial_port='COM5')
+    motor = VESC(serial_port='COM5')
 
-    # cable_lengths = evaluate_traj(print_details=False)
+    cable_lengths = solve_traj(startp=startp, endp=endp, t_total=t_total, dt=dt, print_details=False)
 
-    # execute_trajectory(motor=motor, lengths=cable_lengths)
+    run_traj(motor=motor, lengths=cable_lengths)
     
-    # hold_motor(motor=motor, duration=10)
-
-    evaluate_ik(0.6, 0.2, print_details=True)
+    hold_motor(motor=motor, duration=10)

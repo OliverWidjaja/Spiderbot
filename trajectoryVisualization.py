@@ -157,3 +157,4 @@ if __name__ == "__main__":
     # endp = np.array([0.5, 0.4])
 
     animate_trajectory(start_pos=startp, end_pos=endp, t_total=t_total, dt=dt)
+    

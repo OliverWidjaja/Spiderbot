@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from trajectoryCommand import evaluate_ik
+from trajectoryCommand import solve_ik
 
 def analyze_workspace_feasibility(grid_resolution=100, x_min=0, x_max=1.2, y_min=0, y_max=0.6, 
                                   show_plots=True, return_data=False):
@@ -24,7 +24,7 @@ def analyze_workspace_feasibility(grid_resolution=100, x_min=0, x_max=1.2, y_min
     for i, y in enumerate(y_points):
         for j, x in enumerate(x_points):
             try:
-                result = evaluate_ik(x, y, print_details=False)
+                result = solve_ik(x, y)
                 feasible_points[i, j] = result['feasible']
                 tension_data[i, j] = result['tensions']
                 phi_data[i, j] = result['phi']
