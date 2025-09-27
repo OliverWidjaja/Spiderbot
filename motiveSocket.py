@@ -32,7 +32,7 @@ def receive_new_frame(data_frame: DataFrame):
         pos = rigid_body.pos
         rot = rigid_body.rot # 4D Quaternion
 
-        if name == "Tello":
+        if name:
             yaw, pitch, roll = quaternion_to_euler(rot[0], rot[1], rot[2], rot[3])
             
             data = {

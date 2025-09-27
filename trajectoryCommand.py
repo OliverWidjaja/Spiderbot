@@ -4,15 +4,16 @@ import numpy as np
 import time
 
 # Parameters
-m, g = 2, 9.81  # Mass (kg), Gravity (m/s^2)
+g = 9.81
 a1, a2 = np.array([80/1000, 440/1000]), np.array([1120/1000, 440/1000])  # Anchor positions in global frame (m)
 b1, b2 = np.array([-117.5/1000, 35/1000]), np.array([117.5/1000, 35/1000])  # Cable extrusion points in local frame (m)
 
 # Variables
+mass = 2
 endp = np.array([600/1000, 200/1000])  # x, y (m, m)
 startp = np.array([600/1000, 35/1000])  # x, y (m, m)
 t_total = 5
-dt = 0.5
+dt = 0.01
 
 def solve_length(x, y, phi):
     rot_mat = np.array([[np.cos(phi), -np.sin(phi)], [np.sin(phi), np.cos(phi)]])
@@ -20,7 +21,7 @@ def solve_length(x, y, phi):
     c2 = a2 - (rot_mat @ b2 + [x, y])
     return np.linalg.norm(c1), np.linalg.norm(c2) # vector of cable 1 and 2 lengths in meters
 
-def solve_force_torque(vars, x, y):
+def solve_force_torque(vars, x, y, m):
     tens1, tens2, phi = vars[0], vars[1], vars[2]
     rot_mat = np.array([[np.cos(phi), -np.sin(phi)], [np.sin(phi), np.cos(phi)]])
     
@@ -39,15 +40,15 @@ def solve_force_torque(vars, x, y):
     f2 = np.append(c2_norm * tens2, 0)
     torque = np.cross(b1_rot, f1)[2] + np.cross(b2_rot, f2)[2]
 
-    return np.array([fx, fy, torque]) # residuals for force and torque balance
+    return np.array([fx, fy, torque])
 
-def solve_ik(x, y, guess=np.array([10, 10, 1e-3])):
-    # Add reasonable bounds: tensions > 0, small φ range
-    bounds = ([0, 0, -np.pi/2], [np.inf, np.inf, np.pi/2])  # φ ∈ [-90°, 90°]
-    result = least_squares(lambda vars: solve_force_torque(vars, x, y), guess, bounds=bounds)
+def solve_ik(x, y, m=mass, guess=np.array([10, 10, 1e-3])):
+    bounds = ([0, 0, -np.pi/2],  # Lower bounds for tens1, tens2, and φ
+              [44, 44, np.pi/2])   # Upper bounds for tens1, tens2, and φ
+    result = least_squares(lambda vars: solve_force_torque(vars, x, y, m), guess, bounds=bounds)
     tens1, tens2, phi = result.x
     cable1, cable2 = solve_length(x, y, phi)
-    residuals = solve_force_torque([tens1, tens2, phi], x, y)
+    residuals = solve_force_torque([tens1, tens2, phi], x, y, m)
 
     return {
         'tensions': np.array([tens1, tens2]),
@@ -77,7 +78,7 @@ def solve_traj(startp=startp, endp=endp, t_total=t_total, dt=dt, print_details=T
 
         cable_lengths[i] = sol['found_lengths']
 
-    return cable_lengths # in meters
+    return cable_lengths
 
 def run_traj(motor: VESC, lengths):
     displaced_length = np.zeros_like(lengths) # mm array
@@ -87,7 +88,6 @@ def run_traj(motor: VESC, lengths):
     displaced_length[0] = (lengths[0] - lengths[0]) * 1000
 
     displaced_angle = displaced_length * (360 / 200)  # deg/ mm 
-    print(displaced_angle)
 
     while True:
         try:
@@ -104,8 +104,7 @@ def run_traj(motor: VESC, lengths):
 
     print("\nExecuting trajectory with VESC motors...")
     for i in range(len(displaced_angle)):
-        # print(f"Relative Motor1 :{curr_angle_1+displaced_angle[i][0]:.2f} | Motor2:{curr_angle_2+displaced_angle[i][1]:.2f}")
-        motor.set_pos(curr_angle_1 + displaced_angle[i][0])
+        # motor.set_pos(curr_angle_1 + displaced_angle[i][0])
         motor.set_pos(curr_angle_2 + displaced_angle[i][1], can_id=119)
         time.sleep(dt)
 
@@ -132,10 +131,10 @@ def hold_motor(motor: VESC, duration=10):
     print("Hold complete.")
 
 if __name__ == "__main__":
-    motor = VESC(serial_port='COM5')
+    motor = VESC(serial_port='COM3')
 
     cable_lengths = solve_traj(startp=startp, endp=endp, t_total=t_total, dt=dt, print_details=False)
 
     run_traj(motor=motor, lengths=cable_lengths)
     
-    hold_motor(motor=motor, duration=10)
+    # hold_motor(motor=motor, duration=10)
