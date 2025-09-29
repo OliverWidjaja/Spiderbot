@@ -10,7 +10,7 @@ b1, b2 = np.array([-117.5/1000, 35/1000]), np.array([117.5/1000, 35/1000])  # Ca
 
 # Variables
 mass = 2
-endp = np.array([600/1000, 100/1000])  # x, y (m, m)
+endp = np.array([600/1000, 150/1000])  # x, y (m, m)
 startp = np.array([600/1000, 35/1000])  # x, y (m, m)
 t_total = 4
 dt = 0.01
@@ -113,7 +113,7 @@ def run_traj(motor: VESC, solution):
 
     print("Trajectory execution complete!")
 
-def hold_motor(motor: VESC, duration=10):
+def hold_motor(motor: VESC, duration):
     print(f"Holding motor position for {duration} seconds...")
 
     while True:
@@ -128,8 +128,11 @@ def hold_motor(motor: VESC, duration=10):
     
     start_time = time.time()
     while (time.time() - start_time < duration):
+        loop_start = time.time()
         motor.set_pos(angle_1)
         motor.set_pos(angle_2, can_id=119)
+        elapsed = time.time() - loop_start
+        time.sleep(max(0, 0.01 - elapsed))  # Adjust sleep to maintain timing
 
     print("Hold complete.")
 
@@ -141,6 +144,6 @@ if __name__ == "__main__":
     traj2 = solve_traj(endp, startp, t_total, dt)
 
     # Execute trajectories
-    run_traj(motor=None, solution=traj1)
+    run_traj(motor=motor, solution=traj1)
     hold_motor(motor=motor, duration=5)
     run_traj(motor=motor, solution=traj2)
