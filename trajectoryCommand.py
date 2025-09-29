@@ -10,16 +10,16 @@ b1, b2 = np.array([-117.5/1000, 35/1000]), np.array([117.5/1000, 35/1000])  # Ca
 
 # Variables
 mass = 2
-endp = np.array([600/1000, 200/1000])  # x, y (m, m)
+endp = np.array([600/1000, 100/1000])  # x, y (m, m)
 startp = np.array([600/1000, 35/1000])  # x, y (m, m)
-t_total = 5
+t_total = 4
 dt = 0.01
 
 def solve_length(x, y, phi):
     rot_mat = np.array([[np.cos(phi), -np.sin(phi)], [np.sin(phi), np.cos(phi)]])
     c1 = a1 - (rot_mat @ b1 + [x, y])
     c2 = a2 - (rot_mat @ b2 + [x, y])
-    return np.linalg.norm(c1), np.linalg.norm(c2) # vector of cable 1 and 2 lengths in meters
+    return np.linalg.norm(c1), np.linalg.norm(c2) # vector of cable 1 and 2 solution in meters
 
 def solve_force_torque(vars, x, y, m):
     tens1, tens2, phi = vars[0], vars[1], vars[2]
@@ -58,7 +58,7 @@ def solve_ik(x, y, m=mass, guess=np.array([10, 10, 1e-3])):
         'feasible': tens1 > 0 and tens2 > 0 and np.linalg.norm(residuals) < 1e-2
     }
 
-def solve_traj(startp=startp, endp=endp, t_total=t_total, dt=dt, print_details=True):
+def solve_traj(startp, endp, t_total, dt, print_details=False):
     num_of_steps = int(t_total / dt) + 1
     time_steps = np.arange(0, num_of_steps) * dt
     p = startp + (endp - startp) * (time_steps / t_total).reshape(-1, 1)
@@ -70,7 +70,7 @@ def solve_traj(startp=startp, endp=endp, t_total=t_total, dt=dt, print_details=T
 
         if (print_details == True):
             print(f"Point ({x:.2f}, {y:.2f}):")
-            print(f"  Cable Lengths: {sol['found_lengths']} m")
+            print(f"  Cable lengths: {sol['found_lengths']} m")
             print(f"  Tensions: {sol['tensions']} N")
             print(f"  φ: {sol['phi']} rad ({np.degrees(sol['phi'])}°)")
             print(f"  Residuals: {sol['residuals']} (N, N, Nm)")
@@ -80,13 +80,16 @@ def solve_traj(startp=startp, endp=endp, t_total=t_total, dt=dt, print_details=T
 
     return cable_lengths
 
-def run_traj(motor: VESC, lengths):
-    displaced_length = np.zeros_like(lengths) # mm array
+def run_traj(motor: VESC, solution):
+    displaced_length = np.zeros_like(solution)
 
-    for i in range(1, len(lengths)):
-        displaced_length[i] = (lengths[i] - lengths[0]) * 1000
-    displaced_length[0] = (lengths[0] - lengths[0]) * 1000
-
+    for i in range(1, len(solution)):
+        displaced_length[i] = (solution[i] - solution[0]) * 1000 # mm
+        if abs(displaced_length[i][0] - displaced_length[i-1][0]) < 0.1 or \
+           abs(displaced_length[i][1] - displaced_length[i-1][1]) < 0.1:
+            print("Step diff < 0.1 mm! Too small to execute.")
+            return
+        
     displaced_angle = displaced_length * (360 / 200)  # deg/ mm 
 
     while True:
@@ -102,9 +105,9 @@ def run_traj(motor: VESC, lengths):
     curr_angle_1 = angle_1_offset
     curr_angle_2 = angle_2_offset
 
-    print("\nExecuting trajectory with VESC motors...")
+    print("Executing trajectory with VESC motors...")
     for i in range(len(displaced_angle)):
-        # motor.set_pos(curr_angle_1 + displaced_angle[i][0])
+        motor.set_pos(curr_angle_1 + displaced_angle[i][0])
         motor.set_pos(curr_angle_2 + displaced_angle[i][1], can_id=119)
         time.sleep(dt)
 
@@ -133,8 +136,11 @@ def hold_motor(motor: VESC, duration=10):
 if __name__ == "__main__":
     motor = VESC(serial_port='COM3')
 
-    cable_lengths = solve_traj(startp=startp, endp=endp, t_total=t_total, dt=dt, print_details=False)
+    # Calculate solution in-advance
+    traj1 = solve_traj(startp, endp, t_total, dt)
+    traj2 = solve_traj(endp, startp, t_total, dt)
 
-    run_traj(motor=motor, lengths=cable_lengths)
-    
-    # hold_motor(motor=motor, duration=10)
+    # Execute trajectories
+    run_traj(motor=None, solution=traj1)
+    hold_motor(motor=motor, duration=5)
+    run_traj(motor=motor, solution=traj2)
