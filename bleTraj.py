@@ -34,8 +34,8 @@ class BluetoothVESC:
         else:
             buffer = encode(SetPosition(new_pos))
         
-        # can_id_display = can_id if can_id is not None else 12
-        # print(f"Send pos command: {new_pos:.2f}° (CAN ID: {can_id_display})")
+        can_id_display = can_id if can_id is not None else 12
+        print(f"Send pos command: {new_pos:.2f}° (CAN ID: {can_id_display})")
 
         await self.client.write_gatt_char(self.rx_characteristic, buffer, response=False)
     
