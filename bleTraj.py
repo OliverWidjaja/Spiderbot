@@ -3,8 +3,8 @@ import numpy as np
 import time
 import asyncio
 from bleak import BleakClient
-from pyvesc.protocol.interface import encode
-from pyvesc.VESC.messages import SetPosition
+from pyvesc.protocol.interface import encode, encode_request, decode
+from pyvesc.VESC.messages import SetPosition, GetValues
 
 # Bluetooth configuration
 ADDRESS = "CF:9D:22:EF:60:F9"
@@ -18,15 +18,21 @@ b1, b2 = np.array([-117.5/1000, 35/1000]), np.array([117.5/1000, 35/1000])  # Ca
 
 # Variables
 mass = 2
-endp = np.array([600/1000, 150/1000])  # x, y (m, m)
+endp = np.array([600/1000, 350/1000])  # x, y (m, m)
 startp = np.array([600/1000, 35/1000])  # x, y (m, m)
 t_total = 4
 dt = 0.01
 
 class BluetoothVESC:    
-    def __init__(self, client, rx_characteristic):
+    def __init__(self, client, rx_characteristic, tx_characteristic):
         self.client = client
         self.rx_characteristic = rx_characteristic
+        self.tx_characteristic = tx_characteristic
+        self._buffer = bytearray()
+        
+        # Pre-encode messages for efficiency
+        self._primary_request_msg = encode_request(GetValues())
+        self._secondary_request_msg = encode_request(GetValues(can_id=119))
     
     async def set_pos(self, new_pos, can_id=None):
         if can_id is not None:
@@ -39,6 +45,62 @@ class BluetoothVESC:
 
         await self.client.write_gatt_char(self.rx_characteristic, buffer, response=False)
     
+    async def get_position(self, can_id=None):
+        """Get current position from VESC (primary or secondary)"""
+        try:
+            # Clear buffer before new request
+            self._buffer.clear()
+            
+            # Send request
+            if can_id is not None:
+                await self.client.write_gatt_char(self.rx_characteristic, self._secondary_request_msg)
+            else:
+                await self.client.write_gatt_char(self.rx_characteristic, self._primary_request_msg)
+            
+            # Wait for response with timeout
+            response = await self._wait_for_response(timeout=1.0)
+            
+            if response is not None:
+                # Extract position from response
+                if hasattr(response, 'pid_pos_now'):
+                    return response.pid_pos_now
+                else:
+                    print(f"No position data in response")
+                    return None
+            else:
+                print("No response received")
+                return None
+                
+        except Exception as e:
+            print(f"Error getting position: {e}")
+            return None
+    
+    async def _wait_for_response(self, timeout=1.0):
+        """Wait for and decode response with timeout"""
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            if len(self._buffer) > 0:
+                try:
+                    response, consumed = decode(bytes(self._buffer))
+                    if consumed > 0:
+                        self._buffer = self._buffer[consumed:]
+                        return response
+                except Exception as e:
+                    print(f"Error decoding response: {e}")
+                    self._buffer.clear()
+                    return None
+            
+            await asyncio.sleep(0.01)
+        
+        print("Timeout waiting for response")
+        return None
+    
+    async def notification_handler(self, sender, data):
+        """Handle incoming notifications (responses from VESCs)"""
+        # Add new data to buffer
+        self._buffer.extend(data)
+
 def solve_length(x, y, phi):
     rot_mat = np.array([[np.cos(phi), -np.sin(phi)], [np.sin(phi), np.cos(phi)]])
     c1 = a1 - (rot_mat @ b1 + [x, y])
@@ -105,6 +167,25 @@ def solve_traj(startp, endp, t_total, dt, print_details=False):
     return cable_lengths
 
 async def run_traj(motor: BluetoothVESC, solution, dt):
+    # Get current positions from VESCs to use as offsets
+    print("Getting current positions from VESCs...")
+    
+    angle_1_offset = await motor.get_position(can_id=None)  # Primary VESC
+    if angle_1_offset is None:
+        print("Warning: Could not get position from primary VESC, using 0 as offset")
+        angle_1_offset = 0
+    else:
+        print(f"Primary VESC current position: {angle_1_offset:.2f}°")
+    
+    angle_2_offset = await motor.get_position(can_id=119)  # Secondary VESC
+    if angle_2_offset is None:
+        print("Warning: Could not get position from secondary VESC, using 0 as offset")
+        angle_2_offset = 0
+    else:
+        print(f"Secondary VESC current position: {angle_2_offset:.2f}°")
+    
+    print(f"Using offsets - Primary: {angle_1_offset:.2f}°, Secondary: {angle_2_offset:.2f}°")
+
     displaced_length = np.zeros_like(solution)
 
     for i in range(1, len(solution)):
@@ -116,17 +197,16 @@ async def run_traj(motor: BluetoothVESC, solution, dt):
         
     displaced_angle = displaced_length * (360 / 200)  # deg/ mm 
 
-    # Assume drum is in zero pos
-    angle_1_offset = 0
-    angle_2_offset = 0  
-
     curr_angle_1 = angle_1_offset
     curr_angle_2 = angle_2_offset
 
     print("Executing trajectory with VESC motors...")
     for i in range(len(displaced_angle)):
-        await motor.set_pos(curr_angle_1 + displaced_angle[i][0])
-        await motor.set_pos(curr_angle_2 + displaced_angle[i][1], can_id=119)
+        target_angle_1 = curr_angle_1 + displaced_angle[i][0]
+        target_angle_2 = curr_angle_2 + displaced_angle[i][1]
+        
+        await motor.set_pos(target_angle_1)
+        await motor.set_pos(target_angle_2, can_id=119)
         await asyncio.sleep(dt)
 
     print("Trajectory execution complete!")
@@ -135,15 +215,28 @@ async def main():
     async with BleakClient(ADDRESS) as client:
         print(f"Connected: {client.is_connected}")
 
-        paired = await client.pair(protection_level=2)
-        print(f"Paired: {paired}")
+        # Try pairing (might not be necessary)
+        try:
+            paired = await client.pair(protection_level=2)
+            print(f"Paired: {paired}")
+        except Exception as e:
+            print(f"Pairing failed or not required: {e}")
 
-        motor = BluetoothVESC(client, RX_CHARACTERISTIC)
+        motor = BluetoothVESC(client, RX_CHARACTERISTIC, TX_CHARACTERISTIC)
         print("Motor object created")
 
+        # Set up notification handler for receiving responses
+        await client.start_notify(TX_CHARACTERISTIC, motor.notification_handler)
+        print("Notification handler set up")
+
+        # Calculate trajectory
         traj1 = solve_traj(startp, endp, t_total, dt)
 
+        # Run trajectory with real position offsets
         await run_traj(motor=motor, solution=traj1, dt=dt)
+
+        # Clean up
+        await client.stop_notify(TX_CHARACTERISTIC)
 
 if __name__ == "__main__":
     asyncio.run(main())

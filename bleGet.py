@@ -99,10 +99,10 @@ class BluetoothVESC:
                         with self._values_lock:
                             if can_id == PRIMARY_CAN_ID:
                                 self.primary_values = response
-                                print(f"✓ Updated primary VESC values")
+                                # print(f"✓ Updated primary VESC values")
                             elif can_id == SECONDARY_CAN_ID:
                                 self.secondary_values = response
-                                print(f"✓ Updated secondary VESC (CAN {can_id}) values")
+                                # print(f"✓ Updated secondary VESC (CAN {can_id}) values")
                             else:
                                 print(f"✗ Unexpected CAN ID: {can_id}")
                     
@@ -241,11 +241,11 @@ async def main():
                     print(f"  Voltage: {format_value(secondary_voltage)}V")
                     
                     # Print detailed values every 5 iterations for debugging
-                    if (i + 1) % 5 == 0:
-                        motor.print_detailed_values("primary")
-                        motor.print_detailed_values("secondary")
+                    # if (i + 1) % 5 == 0:
+                    #     motor.print_detailed_values("primary")
+                    #     motor.print_detailed_values("secondary")
                     
-                    print(f"Buffer size: {len(motor._buffer)} bytes")
+                    # print(f"Buffer size: {len(motor._buffer)} bytes")
                     
                     await asyncio.sleep(1)
                     
