@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from trajectoryCommand import solve_ik
+from bleTraj import solve_ik
 from matplotlib.patches import Patch
 
-def analyze_workspace_feasibility(grid_resolution=25, x_min=0, x_max=1.2, y_min=0, y_max=0.5, 
+def analyze_workspace_feasibility(grid_resolution=25, x_min=-1.2, x_max=1.2, y_min=0, y_max=1.2, 
                                   show_plots=True):
     x_points = np.linspace(x_min, x_max, grid_resolution)
     y_points = np.linspace(y_min, y_max, grid_resolution)

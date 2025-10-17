@@ -14,7 +14,7 @@ PRIMARY_CAN_ID = 12  # Primary VESC (no CAN ID)
 SECONDARY_CAN_ID = 119  # Secondary VESC
 
 class BluetoothVESC:    
-    def __init__(self, client, rx_characteristic, tx_characteristic):
+    def __init__(self, client:BleakClient, rx_characteristic, tx_characteristic):
         self.client = client
         self.rx_characteristic = rx_characteristic
         self.tx_characteristic = tx_characteristic
@@ -36,22 +36,22 @@ class BluetoothVESC:
         print(f"Primary request message: {self._primary_request_msg.hex()}")
         print(f"Secondary request message: {self._secondary_request_msg.hex()}")
     
-    async def start_continuous_read(self, read_primary=True, read_secondary=True):
+    async def start_continuous_read(self, read_primary=True, read_secondary=True, request_interval=0.05):
         """Start continuously reading VESC values"""
         self._stop_requested = False
         self._is_reading = True
         
         if read_primary or read_secondary:
-            asyncio.create_task(self._continuous_read_task(read_primary, read_secondary))
+            task_ = asyncio.create_task(self._continuous_read_task(read_primary, read_secondary, request_interval))
     
     async def stop_continuous_read(self):
         """Stop the continuous reading task"""
         self._stop_requested = True
         self._is_reading = False
     
-    async def _continuous_read_task(self, read_primary, read_secondary):
+    async def _continuous_read_task(self, read_primary, read_secondary, request_interval):
         """Background task to continuously read VESC values"""
-        request_interval = 0.05  # 50ms between requests
+        # request_interval = 0.05  # 50ms between requests
         
         while not self._stop_requested and self._is_reading:
             try:
@@ -87,7 +87,8 @@ class BluetoothVESC:
         try:
             # Add new data to buffer
             self._buffer.extend(data)
-            
+            # print(data)
+
             # Process all complete messages in buffer
             while len(self._buffer) > 0:
                 response, consumed = decode(bytes(self._buffer))
@@ -100,6 +101,7 @@ class BluetoothVESC:
                             if can_id == PRIMARY_CAN_ID:
                                 self.primary_values = response
                                 # print(f"✓ Updated primary VESC values")
+                                # print(response.pid_pos_now)
                             elif can_id == SECONDARY_CAN_ID:
                                 self.secondary_values = response
                                 # print(f"✓ Updated secondary VESC (CAN {can_id}) values")
@@ -206,7 +208,7 @@ async def main():
             await client.start_notify(TX_CHARACTERISTIC, motor.notification_handler)
             
             # Start continuous reading for both VESCs
-            await motor.start_continuous_read(read_primary=True, read_secondary=True)
+            await motor.start_continuous_read(read_primary=True, read_secondary=True, request_interval=0.001)
             print("Continuous reading started for both VESCs")
             
             try:

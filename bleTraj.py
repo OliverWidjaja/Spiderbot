@@ -13,14 +13,14 @@ TX_CHARACTERISTIC = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 
 # Parameters
 g = 9.81
-a1, a2 = np.array([80/1000, 440/1000]), np.array([1120/1000, 440/1000])  # Anchor positions in global frame (m)
+a1, a2 = np.array([-1000/1000, 1040/1000]), np.array([1000/1000, 1040/1000])  # Anchor positions in global frame (m), centred at center of workspace
 b1, b2 = np.array([-117.5/1000, 35/1000]), np.array([117.5/1000, 35/1000])  # Cable extrusion points in local frame (m)
 
 # Variables
 mass = 2
-endp = np.array([600/1000, 350/1000])  # x, y (m, m)
-startp = np.array([600/1000, 35/1000])  # x, y (m, m)
-t_total = 4
+endp = np.array([0/1000, 750/1000])  # x, y (m, m)
+startp = np.array([0/1000, 35/1000])  # x, y (m, m)
+t_total = 8
 dt = 0.01
 
 class BluetoothVESC:    
@@ -39,9 +39,6 @@ class BluetoothVESC:
             buffer = encode(SetPosition(new_pos, can_id=can_id))
         else:
             buffer = encode(SetPosition(new_pos))
-        
-        can_id_display = can_id if can_id is not None else 12
-        print(f"Send pos command: {new_pos:.2f}° (CAN ID: {can_id_display})")
 
         await self.client.write_gatt_char(self.rx_characteristic, buffer, response=False)
     
@@ -190,13 +187,9 @@ async def run_traj(motor: BluetoothVESC, solution, dt):
 
     for i in range(1, len(solution)):
         displaced_length[i] = (solution[i] - solution[0]) * 1000 # mm
-        if abs(displaced_length[i][0] - displaced_length[i-1][0]) < 0.1 or \
-           abs(displaced_length[i][1] - displaced_length[i-1][1]) < 0.1:
-            print("Step diff < 0.1 mm! Too small to execute.")
-            return
         
     displaced_angle = displaced_length * (360 / 200)  # deg/ mm 
-
+    print(displaced_angle)
     curr_angle_1 = angle_1_offset
     curr_angle_2 = angle_2_offset
 
@@ -230,10 +223,12 @@ async def main():
         print("Notification handler set up")
 
         # Calculate trajectory
-        traj1 = solve_traj(startp, endp, t_total, dt)
+        goingUp = solve_traj(startp, endp, t_total, dt)
+        goingDown = solve_traj(endp, startp, t_total, dt)
 
         # Run trajectory with real position offsets
-        await run_traj(motor=motor, solution=traj1, dt=dt)
+        await run_traj(motor=motor, solution=goingUp, dt=dt)
+        await run_traj(motor=motor, solution=goingDown, dt=dt)
 
         # Clean up
         await client.stop_notify(TX_CHARACTERISTIC)

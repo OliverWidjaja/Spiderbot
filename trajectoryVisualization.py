@@ -1,17 +1,17 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from trajectoryCommand import solve_ik, a1, a2, b1, b2
+from bleTraj import solve_ik, a1, a2, b1, b2, endp, startp, t_total, dt
 
-def animate_trajectory(start_pos, end_pos, t_total, dt):
+def animate_trajectory(start_pos, end_pos, t_tot, dt):
     if start_pos is None:
         start_pos = np.array([0, 0])
     if end_pos is None:
         end_pos = np.array([1, 1])
 
-    num_of_steps = int(t_total / dt) + 1
+    num_of_steps = int(t_tot / dt) + 1
     time_steps = np.arange(0, num_of_steps) * dt
-    p = start_pos + (end_pos - start_pos) * (time_steps / t_total).reshape(-1, 1)
+    p = start_pos + (end_pos - start_pos) * (time_steps / t_tot).reshape(-1, 1)
     
     positions = []
     cable_starts = []
@@ -53,9 +53,9 @@ def animate_trajectory(start_pos, end_pos, t_total, dt):
     feasible_points = np.array(feasible_points)
     robot_outlines = np.array(robot_outlines)
     
-    fig, ax = plt.subplots(figsize=(10, 5))
-    x_min, x_max = 0, 1.2
-    y_min, y_max = 0, 0.5
+    fig, ax = plt.subplots()
+    x_min, x_max = -1.2, 1.2
+    y_min, y_max = 0, 1.2
     
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_min, y_max)
@@ -101,7 +101,7 @@ def animate_trajectory(start_pos, end_pos, t_total, dt):
         
         current_time = frame * dt
         feasibility = "Feasible" if feasible_points[frame] else "Infeasible"
-        status_text.set_text(f'Status: {feasibility}\nTime: {current_time:.2f}/{t_total} s')
+        status_text.set_text(f'Status: {feasibility}\nTime: {current_time:.2f}/{t_tot} s')
 
         if feasibility == "Infeasible":
             robot_outline.set_color('brown')
@@ -122,8 +122,4 @@ def animate_trajectory(start_pos, end_pos, t_total, dt):
     return anim
 
 if __name__ == "__main__":
-    startp = np.array([0.6, 0.035])
-    endp = np.array([0.5, 0.3])
-    t, dt = 4, 0.01
-
-    animate_trajectory(startp, endp, t, dt)
+    animate_trajectory(startp, endp, t_total, dt)
